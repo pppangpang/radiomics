@@ -10,6 +10,7 @@ from scipy.spatial.distance import pdist
 #hhhhh
 #hhhhhhhhh
 #ooo
+####dsadsafdaf
 
 def _energy(img):
     return np.sum(img ** 2)
