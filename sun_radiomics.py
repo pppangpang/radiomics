@@ -7,7 +7,7 @@ import scipy.stats
 import skimage.measure
 from scipy.spatial.distance import pdist
 # teseet thte git
-
+#hhhhh
 def _energy(img):
     return np.sum(img ** 2)
 
