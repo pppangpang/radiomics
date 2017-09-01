@@ -6,11 +6,7 @@ import scipy
 import scipy.stats
 import skimage.measure
 from scipy.spatial.distance import pdist
-# teseet thte git
-#hhhhh
-#hhhhhhhhh
-#ooo
-####dsadsafdaf
+
 
 def _energy(img):
     return np.sum(img ** 2)
@@ -186,14 +182,14 @@ def calculate_all_features(image, tumour_mask):
 
     '''
 
-    img2 = np.array(image)
-    img2 -= np.amin(image)
-    img2, mask2 = clip_to_bounding_box(img2, tumour_mask)
+    #img2 = np.array(image)
+    #img2 -= np.amin(image)
+    img2, mask2 = clip_to_bounding_box(image, tumour_mask)
     img2 *= mask2 > 0
 
     features = {}
     features.update(group1_features(img2[mask2 > 0]))
-    features.update(tumour_features(mask2, [3, 1, 1]))
+    features.update(tumour_features(mask2, [1, 1, 1]))
     features.update(gray_level_runlength_features(img2, mask2))
     features.update(gray_level_cooccurrence_features(img2, mask2))
     #

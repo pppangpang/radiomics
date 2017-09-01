@@ -11,19 +11,16 @@ import sys
 import numpy as np
 import os
 import csv
-import nibabel as nib
-import numpy.ma as ma
-import six
 import SimpleITK as sitk
 import operator
-from sklearn import svm
-from sklearn.datasets import samples_generator
-from sklearn.feature_selection import SelectKBest, f_regression
-from sklearn.pipeline import make_pipeline
-
 import sun_radiomics as srad
 
-class testt():
+
+
+class testUI():
+    '''
+    tst
+    '''
     def __init__(self):
         '''
         Args:
@@ -32,48 +29,69 @@ class testt():
         Returns: dict containing the features for the image
         '''
         self.ls_images = []
-        strPath = '../DATA/'  #(self.image_path.text())
-        lsFiles = os.listdir(strPath)
+        self.strPath = '/media/panda/panda/1.radiomics/3.data/'  #(self.image_path.text())
+        lsFiles = os.listdir(self.strPath)
         # load the images
         for files in lsFiles:
            # print(files)
-            self.tmpFiles = strPath + files            
-    def test(self):
+            self.tmpFiles = self.strPath + files            
+    def testRadiomics(self):
         ls_images = []
-        strPath = '../DATA/'  #(self.image_path.text())
-        lsFiles = os.listdir(strPath)
+        lsFiles = os.listdir(self.strPath)
         # load the images
         for files in lsFiles[0:5]:
             print(files)
-            tmpFiles = strPath + files
+            tmpFiles = self.strPath + files
             images = os.listdir(tmpFiles)
-            ls_tmp = []
+            ls_tmp = [0, 0, 0, 0, 0]
             tmp = []
             for img in images:
-                '''the order : flair, seg, t1, t1ce, t2'''
-                tmp.append(img)              
+                '''the order : t1, t1ce, t2, flair, seg'''
                 paths = tmpFiles + '/' + img
-                image_info = sitk.ReadImage(paths)
-                ls_tmp.append(image_info)
+                if '_t1.' in img:
+                    ls_tmp[0] = paths
+                elif '_t1ce.' in img:
+                    ls_tmp[1] = paths
+                elif '_t2.' in img:
+                    ls_tmp[2] = paths
+                elif '_flair.' in img:
+                    ls_tmp[3] = paths
+                elif '_seg.' in img:
+                    ls_tmp[4] = paths                  
             ls_images.append(ls_tmp)
         # calculate the image features
         for items in ls_images:
-            image = items[0]
-            tumour_mask = items[1]
-            img2 = np.array(image)
-            img2 -= np.amin(image)
-            img2, mask2 = srad.clip_to_bounding_box(img2, tumour_mask)
-            img2 *= mask2 > 0
-            features = {}
-            features.update(srad.group1_features(img2[mask2 > 0]))
-            features.update(srad.tumour_features(mask2, [3, 1, 1]))
-            features.update(srad.gray_level_runlength_features(img2, mask2))
-            features.update(srad.gray_level_cooccurrence_features(img2, mask2))
-            features.update(srad.wavelet_features(img2, mask2))
-            print(features)
+            image_t1 = sitk.ReadImage(items[0])
+            image_seg = sitk.ReadImage(items[4])
+            npimg = sitk.GetArrayFromImage(image_t1)
+            npmask = sitk.GetArrayFromImage(image_seg)
+
+            spacing = image_t1.GetSpacing()
+
+            fe = calculate_all_features(npimg, npmask)
+            # features = {}
+            # features.update(srad.group1_features(npimg[npmask > 0]))
+            # features.update(srad.gray_level_cooccurrence_features(npimg, npmask))
+
+
+
+
+            # img2 = np.array(image)
+            # img2 -= np.amin(image)
+            # img2, mask2 = srad.clip_to_bounding_box(img2, tumour_mask)
+            # img2 *= mask2 > 0
+            # features = {}
+            # features.update(srad.group1_features(img2[mask2 > 0]))
+            # features.update(srad.tumour_features(mask2, [3, 1, 1]))
+            # features.update(srad.gray_level_runlength_features(img2, mask2))
+            # features.update(srad.gray_level_cooccurrence_features(img2, mask2))
+            # features.update(srad.wavelet_features(img2, mask2))
+            # print(features)
+            print('gg')
 
         pass
-te = testt()
-te.test()
+te = testUI()
+
+te.testRadiomics()
 
 
