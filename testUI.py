@@ -9,20 +9,8 @@ test UI
 
 import sys
 import numpy as np
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import (QApplication, QCheckBox, QGridLayout, QGroupBox, QComboBox,
-        QMenu, QPushButton, QRadioButton, QVBoxLayout, QHBoxLayout, QWidget, QLabel, QLineEdit, QTextEdit)
-
-import sys
-from PyQt5.QtWidgets import QMainWindow, QApplication, QWidget, QAction, QTableWidget, QTableWidgetItem, QVBoxLayout
-from PyQt5.QtGui import QIcon
-from PyQt5.QtCore import pyqtSlot
-from PyQt5.QtCore import *
-
-
 import os
 import csv
-import numpy as np
 import nibabel as nib
 import numpy.ma as ma
 import six
@@ -49,8 +37,7 @@ class testt():
         # load the images
         for files in lsFiles:
            # print(files)
-            self.tmpFiles = strPath + files
-            
+            self.tmpFiles = strPath + files            
     def test(self):
         ls_images = []
         strPath = '../DATA/'  #(self.image_path.text())
@@ -64,8 +51,7 @@ class testt():
             tmp = []
             for img in images:
                 '''the order : flair, seg, t1, t1ce, t2'''
-                tmp.append(img)
-                
+                tmp.append(img)              
                 paths = tmpFiles + '/' + img
                 image_info = sitk.ReadImage(paths)
                 ls_tmp.append(image_info)
@@ -87,7 +73,6 @@ class testt():
             print(features)
 
         pass
-
 te = testt()
 te.test()
 
