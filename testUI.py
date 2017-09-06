@@ -75,31 +75,20 @@ class testUI():
         return ls_images
     def make_masks(self, image_seg):
         '''get the mask from the initial segmentation files, 1, 2, 4 stands for different regions'''
-        mask4 = sitk.BinaryThreshold(
-            image_seg, lowerThreshold=3.9, upperThreshold=5.0)
-        mask42 = sitk.BinaryThreshold(
-            image_seg, lowerThreshold=1.9, upperThreshold=5.0)
-        mask421 = sitk.BinaryThreshold(
-            image_seg, lowerThreshold=0.9, upperThreshold=5.0)
-        return mask4, mask42, mask421
-    def extract_feature(image_t1, image_t1ce, image_t2, image_flair, mask):
-        '''extract features'''
-        extractor = featureextractor.RadiomicsFeaturesExtractor(self.params)
-        result1 = extractor.execute(image_t1, mask)
-        result2 = extractor.execute(image_t1ce, mask)
-        result3 = extractor.execute(image_t2, mask)
-        result4 = extractor.execute(image_flair, mask)
-        temp = [result1, result2, result3, result4]
-        ls_temp = []
-        ls_temp.extend([v for v in result1.values])
-        ls_temp.extend([v for v in result2.values])
-        ls_temp.extend([v for v in result3.values])
-        ls_temp.extend([v for v in result4.values])
-        for keys in self.ls_survival:
-            if keys[0] in items[0]:
-                temp.append(keys)
-                ls_temp.append(keys)
-        return temp, ls_temp       
+        mask4 = image_seg==4
+        mask2 = image_seg==2
+        mask1 = image_seg==1
+        mask21 = mask2 + mask1
+        mask41 = mask4 + mask1
+        mask42 = mask4 + mask2
+        mask421 = mask4 + mask2 + mask1
+        # mask4 = sitk.BinaryThreshold(
+        #     image_seg, lowerThreshold=3.9, upperThreshold=5.0)
+        # mask42 = sitk.BinaryThreshold(
+        #     image_seg, lowerThreshold=1.9, upperThreshold=5.0)
+        # mask421 = sitk.BinaryThreshold(
+        #     image_seg, lowerThreshold=0.9, upperThreshold=5.0)
+        return mask1, mask2, mask4, mask21, mask41, mask42, mask421
     def normalization(self):
         # missing values
         X = np.array(self.ls_features)
@@ -109,12 +98,12 @@ class testUI():
         X_normalize = preprocessing.normalize(X[:,:-1], norm = 'l2')
         X_train =  np.concatenate((X[:,:-1], X_normalize), axis=1)
         Y_train = X[:,-1:]
-        
-        
-
 
     def save_feature(self):
         (pd.DataFrame.from_dict(data = self.dict_features, orient = 'index').to_csv(self.save_path, header=False))    
+    
+    def extract_one_image(self, image, mask):
+        pass
 
     def get_one_radiomics(self, items, title = False):
         start = time.clock()
@@ -123,26 +112,38 @@ class testUI():
         image_t2 = sitk.ReadImage(items[2])
         image_flair = sitk.ReadImage(items[3])
         image_seg = sitk.ReadImage(items[4])
-        mask4, mask42, mask421 = self.make_masks(image_seg)
+        mask1, mask2, mask4, mask21, mask41, mask42, mask421 = self.make_masks(image_seg)
+        sitk.WriteImage(image_seg, '/media/panda/panda/seg.nii.gz')
+        sitk.WriteImage(mask4, '/media/panda/panda/mask4.nii.gz')
+        sitk.WriteImage(mask2, '/media/panda/panda/mask2.nii.gz')
+        sitk.WriteImage(mask1, '/media/panda/panda/mask1.nii.gz')
+        sitk.WriteImage(mask42, '/media/panda/panda/mask42.nii.gz')
+        sitk.WriteImage(mask41, '/media/panda/panda/mask41.nii.gz')
+        sitk.WriteImage(mask421, '/media/panda/panda/mask421.nii.gz')
+        sitk.WriteImage(mask21, '/media/panda/panda/mask21.nii.gz')
+        sitk.WriteImage(image_t1, '/media/panda/panda/t1.nii.gz')
+        sitk.WriteImage(image_t1ce, '/media/panda/panda/t1ce.nii.gz')
+        sitk.WriteImage(image_t2, '/media/panda/panda/t2.nii.gz')
+        sitk.WriteImage(image_flair, '/media/panda/panda/flair.nii.gz')
         ls_temp = []
         extractor = featureextractor.RadiomicsFeaturesExtractor(self.params)
-        print(items[0])
-        result41 = extractor.execute(image_t1, mask4)
-        print(41)
-        result42 = extractor.execute(image_t1ce, mask4)
-        print(42)
-        result43 = extractor.execute(image_t2, mask4)
-        print(43)
-        result44 = extractor.execute(image_flair, mask4)
-        print(44)
-        result421 = extractor.execute(image_t1, mask42)
-        print(421)
-        result422 = extractor.execute(image_t1ce, mask42)
-        print(422)
-        resulgt423 = extractor.execute(image_t2, mask42)
-        print(423)
-        result424 = extractor.execute(image_flair, mask42)
-        print(424)
+        # print(items[0])
+        # result41 = extractor.execute(image_t1, mask4)
+        # print(41)
+        # result42 = extractor.execute(image_t1ce, mask4)
+        # print(42)
+        # result43 = extractor.execute(image_t2, mask4)
+        # print(43)
+        # result44 = extractor.execute(image_flair, mask4)
+        # print(44)
+        # result421 = extractor.execute(image_t1, mask42)
+        # print(421)
+        # result422 = extractor.execute(image_t1ce, mask42)
+        # print(422)
+        # resulgt423 = extractor.execute(image_t2, mask42)
+        # print(423)
+        # result424 = extractor.execute(image_flair, mask42)
+        # print(424)
         result4211 = extractor.execute(image_t1, mask421)
         print(4211)
         result4212 = extractor.execute(image_t1ce, mask421)
@@ -201,7 +202,7 @@ class testUI():
             if n == 0:
                 self.get_one_radiomics(items, title = False)
             else:
-               self.get_one_radiomics(items)                
+               self.get_one_radiomics(items)
             n += 1
             print(n)
         self.save_feature()
