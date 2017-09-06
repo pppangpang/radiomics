@@ -13,14 +13,15 @@ import os
 import csv
 import SimpleITK as sitk
 import operator
-import sun_radiomics as srad
-
-
-
+import pandas as pd 
+#import sun_radiomics as srad
+from radiomics import featureextractor
+import collections
+from sklearn import preprocessing
+from sklearn.preprocessing import Imputer
+import time
 class testUI():
-    '''
-    tst
-    '''
+    ''' tst '''
     def __init__(self):
         '''
         Args:
@@ -29,24 +30,36 @@ class testUI():
         Returns: dict containing the features for the image
         '''
         self.ls_images = []
-        self.strPath = '/media/panda/panda/1.radiomics/3.data/'  #(self.image_path.text())
+        # (self.image_path.text())
+        self.strPath = '/media/panda/panda/1.radiomics/3.data/'
+        self.params = '/media/panda/panda/0.git/pyradiomics/pyradiomics/examples/exampleSettings/exampleMR_NoResampling.yaml'
+        self.csv_path = '/media/panda/panda/1.radiomics/2.codes/survival_data.csv'
+        self.save_path = '/media/panda/panda/1.radiomics/2.codes/features.csv'
         lsFiles = os.listdir(self.strPath)
         # load the images
         for files in lsFiles:
            # print(files)
-            self.tmpFiles = self.strPath + files            
-    def testRadiomics(self):
+            self.tmpFiles = self.strPath + files
+
+    def read_survival_csv(self):
+        '''read the survival information and age of the patient'''
+        self.ls_survival = []
+        # read the csv file
+        with open(self.csv_path) as cf:
+            spreader = csv.reader(cf, delimiter=',', quotechar='\'')
+            for row in spreader:
+                if not 'Age' in row:  # remove the csv file title
+                    self.ls_survival.append(row)
+    def read_images(self):
         ls_images = []
         lsFiles = os.listdir(self.strPath)
         # load the images
-        for files in lsFiles[0:5]:
-            print(files)
+        for files in lsFiles[0:1]:
             tmpFiles = self.strPath + files
             images = os.listdir(tmpFiles)
             ls_tmp = [0, 0, 0, 0, 0]
-            tmp = []
             for img in images:
-                '''the order : t1, t1ce, t2, flair, seg'''
+                # the order : t1, t1ce, t2, flair, seg
                 paths = tmpFiles + '/' + img
                 if '_t1.' in img:
                     ls_tmp[0] = paths
@@ -57,41 +70,142 @@ class testUI():
                 elif '_flair.' in img:
                     ls_tmp[3] = paths
                 elif '_seg.' in img:
-                    ls_tmp[4] = paths                  
+                    ls_tmp[4] = paths
             ls_images.append(ls_tmp)
+        return ls_images
+    def make_masks(self, image_seg):
+        '''get the mask from the initial segmentation files, 1, 2, 4 stands for different regions'''
+        mask4 = sitk.BinaryThreshold(
+            image_seg, lowerThreshold=3.9, upperThreshold=5.0)
+        mask42 = sitk.BinaryThreshold(
+            image_seg, lowerThreshold=1.9, upperThreshold=5.0)
+        mask421 = sitk.BinaryThreshold(
+            image_seg, lowerThreshold=0.9, upperThreshold=5.0)
+        return mask4, mask42, mask421
+    def extract_feature(image_t1, image_t1ce, image_t2, image_flair, mask):
+        '''extract features'''
+        extractor = featureextractor.RadiomicsFeaturesExtractor(self.params)
+        result1 = extractor.execute(image_t1, mask)
+        result2 = extractor.execute(image_t1ce, mask)
+        result3 = extractor.execute(image_t2, mask)
+        result4 = extractor.execute(image_flair, mask)
+        temp = [result1, result2, result3, result4]
+        ls_temp = []
+        ls_temp.extend([v for v in result1.values])
+        ls_temp.extend([v for v in result2.values])
+        ls_temp.extend([v for v in result3.values])
+        ls_temp.extend([v for v in result4.values])
+        for keys in self.ls_survival:
+            if keys[0] in items[0]:
+                temp.append(keys)
+                ls_temp.append(keys)
+        return temp, ls_temp       
+    def normalization(self):
+        # missing values
+        X = np.array(self.ls_features)
+        imp = Imputer(missing_values="NaN", strategy="mean", axis=0)
+        imp.fit(X)
+        # normalization
+        X_normalize = preprocessing.normalize(X[:,:-1], norm = 'l2')
+        X_train =  np.concatenate((X[:,:-1], X_normalize), axis=1)
+        Y_train = X[:,-1:]
+        
+        
+
+
+    def save_feature(self):
+        (pd.DataFrame.from_dict(data = self.dict_features, orient = 'index').to_csv(self.save_path, header=False))    
+
+    def get_one_radiomics(self, items, title = False):
+        start = time.clock()
+        image_t1 = sitk.ReadImage(items[0])
+        image_t1ce = sitk.ReadImage(items[1])
+        image_t2 = sitk.ReadImage(items[2])
+        image_flair = sitk.ReadImage(items[3])
+        image_seg = sitk.ReadImage(items[4])
+        mask4, mask42, mask421 = self.make_masks(image_seg)
+        ls_temp = []
+        extractor = featureextractor.RadiomicsFeaturesExtractor(self.params)
+        print(items[0])
+        result41 = extractor.execute(image_t1, mask4)
+        print(41)
+        result42 = extractor.execute(image_t1ce, mask4)
+        print(42)
+        result43 = extractor.execute(image_t2, mask4)
+        print(43)
+        result44 = extractor.execute(image_flair, mask4)
+        print(44)
+        result421 = extractor.execute(image_t1, mask42)
+        print(421)
+        result422 = extractor.execute(image_t1ce, mask42)
+        print(422)
+        resulgt423 = extractor.execute(image_t2, mask42)
+        print(423)
+        result424 = extractor.execute(image_flair, mask42)
+        print(424)
+        result4211 = extractor.execute(image_t1, mask421)
+        print(4211)
+        result4212 = extractor.execute(image_t1ce, mask421)
+        print(4212)
+        result4213 = extractor.execute(image_t2, mask421)
+        print(4213)
+        result4214 = extractor.execute(image_flair, mask421)
+        print(4214)
+        ls_temp.extend([v for v in result41.values()][7:])
+        ls_temp.extend([v for v in result42.values()][7:])
+        ls_temp.extend([v for v in result43.values()][7:])
+        ls_temp.extend([v for v in result44.values()][7:])
+        ls_temp.extend([v for v in result421.values()][7:])
+        ls_temp.extend([v for v in result422.values()][7:])
+        ls_temp.extend([v for v in result423.values()][7:])
+        ls_temp.extend([v for v in result424.values()][7:])
+        ls_temp.extend([v for v in result4211.values()][7:])
+        ls_temp.extend([v for v in result4212.values()][7:])
+        ls_temp.extend([v for v in result4213.values()][7:])
+        ls_temp.extend([v for v in result4214.values()][7:])
+        self.dict_features = dict()
+        self.dict_all = dict()
+        self.ls_features = []
+        for keys in self.ls_survival:
+            if keys[0] in items[0]:
+                ls_temp.append(keys[1])
+                ls_temp.append(keys[2])
+#                ls_temp.append(keys[0])
+                self.dict_features[keys[0]] = [np.float64(v) for v in ls_temp]
+                self.ls_features.append([np.float64(v) for v in ls_temp])
+        
+        if title:
+            ls_title = []
+            ls_title.extend([v for v in result41.keys()])
+            # ls_title.extend([v for v in result42.keys()][7:])
+            # ls_title.extend([v for v in result43.keys()][7:])
+            # ls_title.extend([v for v in result44.keys()][7:])
+            # ls_title.extend([v for v in result421.keys()][7:])
+            # ls_title.extend([v for v in result422.keys()][7:])
+            # ls_title.extend([v for v in result423.keys()][7:])
+            # ls_title.extend([v for v in result424.keys()][7:])
+            # ls_title.extend([v for v in result4211.keys()][7:])
+            # ls_title.extend([v for v in result4212.keys()][7:])
+            # ls_title.extend([v for v in result4213.keys()][7:])
+            # ls_title.extend([v for v in result4214.keys()][7:])
+            self.dict_features['title'] = ls_title
+        stop = time.clock()
+        print('seconds time :')
+        print(stop - start)
+
+    def testRadiomics(self):
+        ls_images = self.read_images()
         # calculate the image features
+        n = 0
         for items in ls_images:
-            image_t1 = sitk.ReadImage(items[0])
-            image_seg = sitk.ReadImage(items[4])
-            npimg = sitk.GetArrayFromImage(image_t1)
-            npmask = sitk.GetArrayFromImage(image_seg)
-
-            spacing = image_t1.GetSpacing()
-
-            fe = calculate_all_features(npimg, npmask)
-            # features = {}
-            # features.update(srad.group1_features(npimg[npmask > 0]))
-            # features.update(srad.gray_level_cooccurrence_features(npimg, npmask))
-
-
-
-
-            # img2 = np.array(image)
-            # img2 -= np.amin(image)
-            # img2, mask2 = srad.clip_to_bounding_box(img2, tumour_mask)
-            # img2 *= mask2 > 0
-            # features = {}
-            # features.update(srad.group1_features(img2[mask2 > 0]))
-            # features.update(srad.tumour_features(mask2, [3, 1, 1]))
-            # features.update(srad.gray_level_runlength_features(img2, mask2))
-            # features.update(srad.gray_level_cooccurrence_features(img2, mask2))
-            # features.update(srad.wavelet_features(img2, mask2))
-            # print(features)
-            print('gg')
-
-        pass
+            if n == 0:
+                self.get_one_radiomics(items, title = False)
+            else:
+               self.get_one_radiomics(items)                
+            n += 1
+            print(n)
+        self.save_feature()
 te = testUI()
-
+te.read_survival_csv()
 te.testRadiomics()
-
-
+te.normalization()
