@@ -31,7 +31,7 @@ class testUI():
         '''
         self.ls_images = []
         # (self.image_path.text())
-        self.strPath = '/media/panda/panda/1.radiomics/3.data/2/'
+        self.strPath = '/media/panda/panda/1.radiomics/3.data/1/'
         self.params = '/media/panda/panda/0.git/pyradiomics/pyradiomics/examples/exampleSettings/exampleMR_NoResampling.yaml'
         self.csv_path = '/media/panda/panda/1.radiomics/2.codes/survival_data.csv'
         self.save_path = '/media/panda/panda/0.git/radiomics/features/'
@@ -54,7 +54,7 @@ class testUI():
         ls_images = []
         lsFiles = os.listdir(self.strPath)
         # load the images
-        for files in lsFiles[0:5]: #[0:1]
+        for files in lsFiles: #[0:1]
             tmpFiles = self.strPath + files
             images = os.listdir(tmpFiles)
             ls_tmp = [0, 0, 0, 0, 0]
@@ -123,6 +123,13 @@ class testUI():
         ls_tmp_feature.extend([v for v in result3.values()][7:])
         ls_tmp_feature.extend([v for v in result4.values()][7:])
         return ls_tmp_feature
+    def is_feature_calculated(self, items):
+        for keys in self.ls_survival:
+            if keys[0] in items[0]:
+                pa = self.save_path + keys[0] + '.csv'
+                return os.path.exists(pa)
+
+    
     def save_one_feature(self, ls_feature, filename):
         pa = self.save_path + filename + '.csv'
         df = pd.DataFrame(ls_feature)
@@ -203,13 +210,14 @@ class testUI():
         # calculate the image features
         n = 0
         for items in ls_images:
-            if n == 0:
+            print('s')
+            if self.is_feature_calculated(items) == False:
                 self.get_one_radiomics(items, title = False)
+                #self.save_feature()
             else:
-               self.get_one_radiomics(items)
+                print('calated')
             n += 1
             print(n)
-        self.save_feature()
 te = testUI()
 te.read_survival_csv()
 te.testRadiomics()

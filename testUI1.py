@@ -5,7 +5,7 @@ Created on Mon Aug 21 17:43:44 2017
 test UI
 
 @author: st
-"""
+ """
 
 import sys
 import numpy as np
@@ -19,6 +19,14 @@ from radiomics import featureextractor
 import collections
 from sklearn import preprocessing
 from sklearn.preprocessing import Imputer
+from sklearn.model_selection import train_test_split
+from sklearn import svm
+from sklearn.linear_model import LassoCV
+from sklearn.feature_selection import SelectFromModel
+from sklearn.decomposition import PCA
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import log_loss
+
 import time
 class testUI():
     ''' tst '''
@@ -35,6 +43,7 @@ class testUI():
         self.params = '/media/panda/panda/0.git/pyradiomics/pyradiomics/examples/exampleSettings/exampleMR_NoResampling.yaml'
         self.csv_path = '/media/panda/panda/1.radiomics/2.codes/survival_data.csv'
         self.save_path = '/media/panda/panda/0.git/radiomics/features/'
+        self.save_path_all = '/media/panda/panda/1.radiomics/2.codes/'
         lsFiles = os.listdir(self.strPath)
         # load the images
         for files in lsFiles:
@@ -54,7 +63,7 @@ class testUI():
         ls_images = []
         lsFiles = os.listdir(self.strPath)
         # load the images
-        for files in lsFiles[0:5]: #[0:1]
+        for files in lsFiles: #[0:1]
             tmpFiles = self.strPath + files
             images = os.listdir(tmpFiles)
             ls_tmp = [0, 0, 0, 0, 0]
@@ -89,19 +98,7 @@ class testUI():
         # mask421 = sitk.BinaryThreshold(
         #     image_seg, lowerThreshold=0.9, upperThreshold=5.0)
         return mask1, mask2, mask4, mask21, mask41, mask42, mask421
-    def normalization(self):
-        '''ds'''
-        # missing values
-        X = np.array(self.ls_features)
-        imp = Imputer(missing_values="NaN", strategy="mean", axis=0)
-        imp.fit(X)
-        # normalization
-        X_normalize = preprocessing.normalize(X[:,:-1], norm = 'l2')
-        X_train =  np.concatenate((X[:,:-1], X_normalize), axis=1)
-        Y_train = X[:,-1:]
-        pa = self.save_path + 'normalized.csv'
-        df = pd.DataFrame(X_train)
-        df.to_csv(pa, header=False)   
+
     def save_feature(self):
         '''save files'''
         pa = self.save_path + 'features.csv'
@@ -123,6 +120,13 @@ class testUI():
         ls_tmp_feature.extend([v for v in result3.values()][7:])
         ls_tmp_feature.extend([v for v in result4.values()][7:])
         return ls_tmp_feature
+    def is_feature_calculated(self, items):
+        for keys in self.ls_survival:
+            if keys[0] in items[0]:
+                pa = self.save_path + keys[0] + '.csv'
+                return os.path.exists(pa)
+
+    
     def save_one_feature(self, ls_feature, filename):
         pa = self.save_path + filename + '.csv'
         df = pd.DataFrame(ls_feature)
@@ -203,14 +207,93 @@ class testUI():
         # calculate the image features
         n = 0
         for items in ls_images:
-            if n == 0:
+            if n == 15:
+                s = 10
+
+            if self.is_feature_calculated(items) == False:
                 self.get_one_radiomics(items, title = False)
+                self.save_feature()
             else:
-               self.get_one_radiomics(items)
+                print('calated')
+                print(items[0])
             n += 1
             print(n)
-        self.save_feature()
+
+
+    def normalization(self):
+        '''ds'''
+        # missing values
+        X = np.array(self.ls_features)
+        imp = Imputer(missing_values="NaN", strategy="mean", axis=0)
+        imp.fit(X)
+        # normalization
+        X_normalize = preprocessing.normalize(X[:,:-1], norm = 'l2')
+        X_train =  np.concatenate((X[:,:-1], X_normalize), axis=1)
+        Y_train = X[:,-1:]
+        pa = self.save_path + 'normalized.csv'
+        df = pd.DataFrame(X_train)
+        df.to_csv(pa, header=False)   
+
+    def combine_all_features(self):
+        features = os.listdir(self.save_path)
+        df = pd.DataFrame.from_csv(self.save_path + features[0], header = None)
+        ls_tmp = [df.loc[:, 1:1]]
+        for i in features[1:]:
+            print(i)
+            f_path = self.save_path + i
+            df1 = pd.read_csv(f_path, header = None)
+            ls_tmp.append(df1.loc[:, 1:1])
+        print('a')
+        df_features = pd.concat(ls_tmp, axis = 1)
+        pa = self.save_path_all + 'features.csv'
+        df_features.to_csv(pa, header=False)       
+    
+    def feature_classification(self, upThres = 450, lowerThres = 300):
+        df = pd.DataFrame.from_csv(self.save_path_all + 'features.csv', header = None)
+        dfs = df.transpose()
+        ls_features = dfs.values.tolist()
+        if len(ls_features[:-1]) < 1000:
+            ls_features.pop()
+        for i in range(len(ls_features)):
+            if ls_features[i][-1] < lowerThres:
+                ls_features[i].append(1)
+            elif ls_features[i][-1] > upThres:
+                ls_features[i].append(3)
+            else:
+                ls_features[i].append(2)
+
+        np_features = np.array(ls_features)
+        X = np_features[:, :-2]
+        Y = np_features[:,-1]
+        nf = 10
+        pca = PCA(n_components=nf)
+        pca.fit(X)
+        PX = pca.transform(X)
+
+        X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=0.4, random_state=0)
+
+        # random forest
+        X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=0.4, random_state=0)
+        clf = RandomForestClassifier(n_estimators=25)
+        clf.fit(X_train, y_train)
+        clf_out = clf.predict(X_test)
+        clf_probs = clf.predict_proba(X_test)
+        score = log_loss(y_test, clf_probs)
+        ou = (clf_out - y_test)
+        print(float(np.count_nonzero(ou == 0)) / float(len(ou)))
+        
+        return ls_features
+
+
+
+
 te = testUI()
-te.read_survival_csv()
-te.testRadiomics()
-te.normalization()
+
+# step 1. extract features
+# te.read_survival_csv()
+# te.testRadiomics()
+# te.normalization()
+
+# step 2. processing features
+#te.combine_all_features()
+s = te.feature_classification(450, 150)
